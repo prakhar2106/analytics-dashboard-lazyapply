@@ -322,8 +322,8 @@ export default function JobLinks() {
 
         {/* Stats */}
         {stats && (
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)' } }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -334,8 +334,8 @@ export default function JobLinks() {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </Box>
+            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)' } }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -346,8 +346,8 @@ export default function JobLinks() {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </Box>
+            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)' } }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -358,8 +358,8 @@ export default function JobLinks() {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </Box>
+            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)' } }}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -370,8 +370,8 @@ export default function JobLinks() {
                   </Typography>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         )}
 
         {/* Job Links Table */}

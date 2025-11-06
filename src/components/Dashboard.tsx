@@ -41,9 +41,6 @@ import {
 } from '@mui/material'
 import {
   FilterList as FilterListIcon,
-  Refresh as RefreshIcon,
-  TrendingUp as TrendingUpIcon,
-  Assessment as AssessmentIcon,
   SmartToy as SmartToyIcon,
   Close as CloseIcon,
   Visibility as VisibilityIcon,
@@ -641,7 +638,7 @@ export default function Dashboard() {
                       outerRadius={80}
                       label
                     >
-                      {platformData.map((entry, index) => (
+                      {platformData.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
