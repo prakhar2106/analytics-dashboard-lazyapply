@@ -17,7 +17,6 @@ import {
   Lock as LockIcon,
   Analytics as AnalyticsIcon,
 } from '@mui/icons-material'
-import { useTheme } from '@mui/material/styles'
 import axios from 'axios'
 
 interface LoginProps {
@@ -29,7 +28,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const theme = useTheme()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
