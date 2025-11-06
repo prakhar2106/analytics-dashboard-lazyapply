@@ -37,8 +37,9 @@ function AppContent() {
     // Check if user is already authenticated
     const token = localStorage.getItem('authToken')
     if (token) {
-      // Verify token is still valid by making a test request
       setIsAuthenticated(true)
+    } else {
+      setIsAuthenticated(false)
     }
     setCheckingAuth(false)
   }, [])
@@ -52,7 +53,11 @@ function AppContent() {
   }
 
   if (checkingAuth) {
-    return null // Or a loading spinner
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    )
   }
 
   if (!isAuthenticated) {

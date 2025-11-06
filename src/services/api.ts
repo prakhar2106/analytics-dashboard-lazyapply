@@ -24,9 +24,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
+      // Clear token
       localStorage.removeItem('authToken');
-      window.location.href = '/';
+      // Only redirect if we're not already on login page and token exists
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/') {
+        window.location.href = '/';
+      } else {
+        // If already on login/home, just reload to trigger auth check
+        window.location.reload();
+      }
     }
     return Promise.reject(error);
   }
