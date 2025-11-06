@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import {
   Box,
   AppBar,
@@ -12,14 +12,51 @@ import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import JobLinks from './components/JobLinks'
 import JobSearchAnalytics from './components/JobSearchAnalytics'
+import Login from './components/Login'
 
 const DRAWER_WIDTH = 240
 
+interface ProtectedRouteProps {
+  children: React.ReactNode
+  isAuthenticated: boolean
+}
+
+function ProtectedRoute({ children, isAuthenticated }: ProtectedRouteProps) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  return <>{children}</>
+}
+
 function AppContent() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    const token = localStorage.getItem('authToken')
+    if (token) {
+      // Verify token is still valid by making a test request
+      setIsAuthenticated(true)
+    }
+    setCheckingAuth(false)
+  }, [])
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true)
+  }
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
+  }
+
+  if (checkingAuth) {
+    return null // Or a loading spinner
+  }
+
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />
   }
 
   return (
@@ -64,9 +101,32 @@ function AppContent() {
       >
             <Toolbar /> {/* Spacer for AppBar */}
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/job-links" element={<JobLinks />} />
-              <Route path="/job-search-analytics" element={<JobSearchAnalytics />} />
+              <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute isAuthenticated={isAuthenticated}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/job-links" 
+                element={
+                  <ProtectedRoute isAuthenticated={isAuthenticated}>
+                    <JobLinks />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/job-search-analytics" 
+                element={
+                  <ProtectedRoute isAuthenticated={isAuthenticated}>
+                    <JobSearchAnalytics />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
       </Box>
     </Box>

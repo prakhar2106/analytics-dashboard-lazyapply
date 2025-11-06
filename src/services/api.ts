@@ -10,15 +10,27 @@ const api = axios.create({
   },
 });
 
-// Add auth token interceptor if needed
+// Add auth token interceptor
 api.interceptors.request.use((config) => {
-  // Add auth token here if needed
-  // const token = localStorage.getItem('token');
-  // if (token) {
-  //   config.headers.Authorization = `Bearer ${token}`;
-  // }
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
+
+// Handle 401 unauthorized responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear token and redirect to login
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Analytics API endpoints
 export const analyticsAPI = {

@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/lazyapplyV2/:path*",
-      "destination": "https://backend.lazyapply.com/lazyapplyV2/:path*"
+      "destination": "http://backend.lazyapply.com/lazyapplyV2/:path*"
     },
     {
       "source": "/(.*)",
