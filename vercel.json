@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    {
+      "source": "/lazyapplyV2/:path*",
+      "destination": "https://backend.lazyapply.com/lazyapplyV2/:path*"
+    }
+  ]
+}
+
