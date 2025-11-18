@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/lazyapplyV2': {
-        target: 'http://backend.lazyapply.com',
+        target: 'https://backend.lazyapply.com',
         changeOrigin: true,
         secure: true,
       },

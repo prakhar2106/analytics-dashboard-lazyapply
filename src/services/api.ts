@@ -120,6 +120,17 @@ export const analyticsAPI = {
         const response = await api.get('/lazyapplyV2/form-analysis/analytics/job-links', { params });
         return response.data;
       },
+
+      // Get new inputs analytics
+      getNewInputsAnalytics: async (params?: {
+        email?: string;
+        startDate?: string;
+        endDate?: string;
+        platform?: string;
+      }) => {
+        const response = await api.get('/lazyapplyV2/form-analysis/analytics/new-inputs', { params });
+        return response.data;
+      },
     };
 
     // Job Search Analytics API endpoints

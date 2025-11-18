@@ -152,6 +152,22 @@ export default function Dashboard() {
     completionRate: '',
   })
   
+  // Main tab state
+  const [mainTab, setMainTab] = useState(0)
+  
+  // New Inputs Analytics state
+  const [newInputsData, setNewInputsData] = useState<any>(null)
+  const [newInputsLoading, setNewInputsLoading] = useState(false)
+  const [newInputsApplications, setNewInputsApplications] = useState<any[]>([])
+  const [newInputsPagination, setNewInputsPagination] = useState({
+    total: 0,
+    limit: 50,
+    offset: 0,
+    hasMore: false,
+  })
+  const [newInputsSortBy, setNewInputsSortBy] = useState('timestamp')
+  const [newInputsSortOrder, setNewInputsSortOrder] = useState<'asc' | 'desc'>('desc')
+  
   // Detail view states
   const [detailDialog, setDetailDialog] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<any>(null)
@@ -266,8 +282,12 @@ export default function Dashboard() {
   // Apply filters
   const handleApplyFilters = () => {
     setPagination((prev) => ({ ...prev, offset: 0 }))
-    fetchOverview()
-    fetchApplications(true)
+    if (mainTab === 0) {
+      fetchOverview()
+      fetchApplications(true)
+    } else if (mainTab === 1) {
+      fetchNewInputsAnalytics(true)
+    }
   }
 
   // Handle pagination change
@@ -401,10 +421,86 @@ export default function Dashboard() {
     setFilters((prev) => ({ ...prev, startDate: '', endDate: '' }))
   }
 
+  // Fetch new inputs analytics
+  const fetchNewInputsAnalytics = async (resetOffset = false, customLimit?: number, customOffset?: number) => {
+    try {
+      setNewInputsLoading(true)
+      const dateRange = getDateRangeFromPeriod(timePeriod)
+      const currentOffset = resetOffset ? 0 : (customOffset !== undefined ? customOffset : newInputsPagination.offset)
+      const currentLimit = customLimit !== undefined ? customLimit : newInputsPagination.limit
+      const params: any = {
+        limit: currentLimit,
+        offset: currentOffset,
+        sortBy: newInputsSortBy,
+        sortOrder: newInputsSortOrder,
+      }
+      
+      if (filters.startDate) {
+        params.startDate = filters.startDate
+      } else if (dateRange.startDate) {
+        params.startDate = dateRange.startDate
+      }
+      if (filters.endDate) {
+        params.endDate = filters.endDate
+      } else if (dateRange.endDate) {
+        params.endDate = dateRange.endDate
+      }
+      
+      if (filters.email) params.email = filters.email
+      if (filters.platform) params.platform = filters.platform
+
+      const response = await analyticsAPI.getNewInputsAnalytics(params)
+      if (response.success) {
+        setNewInputsData(response.data)
+        if (response.data.applications) {
+          setNewInputsApplications(response.data.applications)
+        }
+        if (response.data.pagination) {
+          setNewInputsPagination({
+            total: response.data.pagination.total,
+            limit: response.data.pagination.limit || currentLimit,
+            offset: response.data.pagination.offset || currentOffset,
+            hasMore: response.data.pagination.hasMore || false,
+          })
+        }
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to fetch new inputs analytics')
+      console.error('Error fetching new inputs analytics:', err)
+    } finally {
+      setNewInputsLoading(false)
+    }
+  }
+
+  // Handle new inputs pagination
+  const handleNewInputsPageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
+    const newOffset = (page - 1) * newInputsPagination.limit
+    setNewInputsPagination((prev) => ({ ...prev, offset: newOffset }))
+    fetchNewInputsAnalytics(false, undefined, newOffset)
+  }
+
+  // Handle new inputs sort change
+  const handleNewInputsSortChange = (field: string) => {
+    if (newInputsSortBy === field) {
+      setNewInputsSortOrder(newInputsSortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setNewInputsSortBy(field)
+      setNewInputsSortOrder('desc')
+    }
+    setNewInputsPagination((prev) => ({ ...prev, offset: 0 }))
+    setTimeout(() => {
+      fetchNewInputsAnalytics(true)
+    }, 0)
+  }
+
   useEffect(() => {
-    fetchOverview()
-    fetchApplications(true)
-  }, [pagination.limit, timePeriod])
+    if (mainTab === 0) {
+      fetchOverview()
+      fetchApplications(true)
+    } else if (mainTab === 1) {
+      fetchNewInputsAnalytics(true)
+    }
+  }, [pagination.limit, timePeriod, mainTab, newInputsPagination.limit, newInputsSortBy, newInputsSortOrder])
 
   // Prepare chart data
   const platformData = overview?.platformDistribution || []
@@ -438,18 +534,29 @@ export default function Dashboard() {
           </FormControl>
         </Box>
 
+        {/* Main Tabs */}
+        <Paper sx={{ mb: 3 }}>
+          <Tabs value={mainTab} onChange={(_, newValue) => setMainTab(newValue)}>
+            <Tab label="Overview" />
+            <Tab label="New Inputs Analytics" />
+          </Tabs>
+        </Paper>
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
 
-        {/* Filters Section */}
-        <Paper sx={{ p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <FilterListIcon sx={{ mr: 1 }} />
-            <Typography variant="h6">Filters</Typography>
-          </Box>
+        {/* Tab Content */}
+        {mainTab === 0 && (
+          <>
+            {/* Filters Section */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <FilterListIcon sx={{ mr: 1 }} />
+                <Typography variant="h6">Filters</Typography>
+              </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
             <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)' } }}>
               <TextField
@@ -849,6 +956,344 @@ export default function Dashboard() {
             </Paper>
           </>
         )}
+          </>
+        )}
+
+        {mainTab === 1 && (
+          <>
+            {/* New Inputs Analytics Content */}
+            {newInputsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : newInputsData ? (
+              <>
+                {/* Overview Cards */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                  <Card sx={{ flex: '1 1 200px' }}>
+                    <CardContent>
+                      <Typography color="text.secondary" gutterBottom>
+                        Applications with New Inputs
+                      </Typography>
+                      <Typography variant="h4">{newInputsData.overview.totalApplicationsWithNewInputs}</Typography>
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ flex: '1 1 200px' }}>
+                    <CardContent>
+                      <Typography color="text.secondary" gutterBottom>
+                        Total New Inputs
+                      </Typography>
+                      <Typography variant="h4">{newInputsData.overview.totalNewInputs.toLocaleString()}</Typography>
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ flex: '1 1 200px' }}>
+                    <CardContent>
+                      <Typography color="text.secondary" gutterBottom>
+                        Valid Inputs
+                      </Typography>
+                      <Typography variant="h4">{newInputsData.overview.totalValidInputs.toLocaleString()}</Typography>
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ flex: '1 1 200px' }}>
+                    <CardContent>
+                      <Typography color="text.secondary" gutterBottom>
+                        Invalid Inputs
+                      </Typography>
+                      <Typography variant="h4">{newInputsData.overview.totalInvalidInputs.toLocaleString()}</Typography>
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ flex: '1 1 200px' }}>
+                    <CardContent>
+                      <Typography color="text.secondary" gutterBottom>
+                        Avg per Application
+                      </Typography>
+                      <Typography variant="h4">
+                        {newInputsData.overview.avgNewInputsPerApplication.toFixed(2)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+
+                {/* Charts */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                  <Paper sx={{ p: 3, flex: '1 1 400px' }}>
+                    <Typography variant="h6" gutterBottom>
+                      New Inputs by Type
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Radio', value: newInputsData.byType.radio },
+                            { name: 'Checkbox', value: newInputsData.byType.checkbox },
+                            { name: 'Text', value: newInputsData.byType.text },
+                            { name: 'Select', value: newInputsData.byType.select },
+                            { name: 'Textarea', value: newInputsData.byType.textarea },
+                          ].filter(item => item.value > 0)}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label
+                        >
+                          {[
+                            { name: 'Radio', value: newInputsData.byType.radio },
+                            { name: 'Checkbox', value: newInputsData.byType.checkbox },
+                            { name: 'Text', value: newInputsData.byType.text },
+                            { name: 'Select', value: newInputsData.byType.select },
+                            { name: 'Textarea', value: newInputsData.byType.textarea },
+                          ].filter(item => item.value > 0).map((_entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                  <Paper sx={{ p: 3, flex: '1 1 400px' }}>
+                    <Typography variant="h6" gutterBottom>
+                      New Inputs Over Time
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={newInputsData.timeSeries.map((item: any) => ({
+                        date: item._id,
+                        count: item.count,
+                        totalNewInputs: item.totalNewInputs,
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="count" stroke="#8884d8" name="Applications" />
+                        <Line type="monotone" dataKey="totalNewInputs" stroke="#82ca9d" name="New Inputs" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Box>
+
+                {/* Platform Distribution */}
+                {newInputsData.platformDistribution && newInputsData.platformDistribution.length > 0 && (
+                  <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Platform Distribution
+                    </Typography>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Platform</TableCell>
+                            <TableCell>Applications</TableCell>
+                            <TableCell>Total New Inputs</TableCell>
+                            <TableCell>Avg New Inputs</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {newInputsData.platformDistribution.map((platform: any) => (
+                            <TableRow key={platform._id}>
+                              <TableCell>{platform._id || 'Unknown'}</TableCell>
+                              <TableCell>{platform.count}</TableCell>
+                              <TableCell>{platform.totalNewInputs}</TableCell>
+                              <TableCell>{platform.avgNewInputs.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Paper>
+                )}
+
+                {/* Top Questions */}
+                {newInputsData.topQuestions && newInputsData.topQuestions.length > 0 && (
+                  <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Top Questions/Values
+                    </Typography>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Question/Value</TableCell>
+                            <TableCell>Type</TableCell>
+                            <TableCell>Count</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {newInputsData.topQuestions.map((item: any, index: number) => (
+                            <TableRow key={index}>
+                              <TableCell sx={{ maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item._id || 'N/A'}
+                              </TableCell>
+                              <TableCell>{item.type || 'N/A'}</TableCell>
+                              <TableCell>{item.count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Paper>
+                )}
+
+                {/* Properties Breakdown */}
+                <Paper sx={{ p: 3, mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Input Properties Breakdown
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                    <Card sx={{ flex: '1 1 200px' }}>
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>With Options</Typography>
+                        <Typography variant="h5">{newInputsData.properties.withOptions}</Typography>
+                      </CardContent>
+                    </Card>
+                    <Card sx={{ flex: '1 1 200px' }}>
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>Without Options</Typography>
+                        <Typography variant="h5">{newInputsData.properties.withoutOptions}</Typography>
+                      </CardContent>
+                    </Card>
+                    <Card sx={{ flex: '1 1 200px' }}>
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>With Value</Typography>
+                        <Typography variant="h5">{newInputsData.properties.withValue}</Typography>
+                      </CardContent>
+                    </Card>
+                    <Card sx={{ flex: '1 1 200px' }}>
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>With Name</Typography>
+                        <Typography variant="h5">{newInputsData.properties.withName}</Typography>
+                      </CardContent>
+                    </Card>
+                    <Card sx={{ flex: '1 1 200px' }}>
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>With ID</Typography>
+                        <Typography variant="h5">{newInputsData.properties.withId}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
+                </Paper>
+
+                {/* Applications Table */}
+                <Paper sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">
+                      Applications with New Inputs ({newInputsPagination.total > 0 ? newInputsPagination.total : newInputsApplications.length})
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                      <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Items per page</InputLabel>
+                        <Select
+                          value={newInputsPagination.limit}
+                          label="Items per page"
+                          onChange={(e: any) => {
+                            const newLimit = Number(e.target.value)
+                            setNewInputsPagination((prev) => ({ ...prev, limit: newLimit, offset: 0 }))
+                            fetchNewInputsAnalytics(true, newLimit)
+                          }}
+                        >
+                          <MenuItem value={25}>25</MenuItem>
+                          <MenuItem value={50}>50</MenuItem>
+                          <MenuItem value={100}>100</MenuItem>
+                          <MenuItem value={200}>200</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  </Box>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>
+                            <TableSortLabel
+                              active={newInputsSortBy === 'email'}
+                              direction={newInputsSortBy === 'email' ? newInputsSortOrder : 'asc'}
+                              onClick={() => handleNewInputsSortChange('email')}
+                            >
+                              Email
+                            </TableSortLabel>
+                          </TableCell>
+                          <TableCell>
+                            <TableSortLabel
+                              active={newInputsSortBy === 'platform'}
+                              direction={newInputsSortBy === 'platform' ? newInputsSortOrder : 'asc'}
+                              onClick={() => handleNewInputsSortChange('platform')}
+                            >
+                              Platform
+                            </TableSortLabel>
+                          </TableCell>
+                          <TableCell>
+                            <TableSortLabel
+                              active={newInputsSortBy === 'newInputsCount'}
+                              direction={newInputsSortBy === 'newInputsCount' ? newInputsSortOrder : 'asc'}
+                              onClick={() => handleNewInputsSortChange('newInputsCount')}
+                            >
+                              New Inputs Count
+                            </TableSortLabel>
+                          </TableCell>
+                          <TableCell>
+                            <TableSortLabel
+                              active={newInputsSortBy === 'timestamp'}
+                              direction={newInputsSortBy === 'timestamp' ? newInputsSortOrder : 'asc'}
+                              onClick={() => handleNewInputsSortChange('timestamp')}
+                            >
+                              Date
+                            </TableSortLabel>
+                          </TableCell>
+                          <TableCell>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {newInputsApplications.map((app) => (
+                          <TableRow
+                            key={app._id}
+                            hover
+                            sx={{ cursor: 'pointer' }}
+                          >
+                            <TableCell onClick={() => handleViewDetails(app)}>{app.email}</TableCell>
+                            <TableCell onClick={() => handleViewDetails(app)}>
+                              <Chip label={app.platform} size="small" color="primary" variant="outlined" />
+                            </TableCell>
+                            <TableCell onClick={() => handleViewDetails(app)}>
+                              {app.newInputsCount || (app.newInputs ? app.newInputs.length : 0)}
+                            </TableCell>
+                            <TableCell onClick={() => handleViewDetails(app)}>
+                              {new Date(app.timestamp).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleViewDetails(app)}
+                                color="primary"
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  {newInputsPagination.total > newInputsPagination.limit && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                      <Pagination
+                        count={Math.ceil(newInputsPagination.total / newInputsPagination.limit)}
+                        page={Math.floor(newInputsPagination.offset / newInputsPagination.limit) + 1}
+                        onChange={handleNewInputsPageChange}
+                        color="primary"
+                        showFirstButton
+                        showLastButton
+                      />
+                    </Box>
+                  )}
+                </Paper>
+              </>
+            ) : (
+              <Alert severity="info">No new inputs data available for the selected filters.</Alert>
+            )}
+          </>
+        )}
       </Container>
 
       {/* Detail View Dialog */}
@@ -878,6 +1323,7 @@ export default function Dashboard() {
                 <Tabs value={detailTab} onChange={(_, newValue) => setDetailTab(newValue)}>
                   <Tab label="Overview" />
                   <Tab label="Fields" />
+                  <Tab label="New Inputs" />
                   <Tab label="AI Analysis" />
                   <Tab label="View Form" />
                   <Tab label="Raw JSON" />
@@ -994,7 +1440,67 @@ export default function Dashboard() {
                 </Box>
               )}
 
-              {detailTab === 2 && (
+              {detailTab === 2 && selectedApplication.newInputs && (
+                <Box>
+                  <Typography variant="h6" gutterBottom>New Inputs</Typography>
+                  {selectedApplication.newInputsAnalytics && (
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle1" gutterBottom>Analytics Summary</Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                        <Chip label={`Total: ${selectedApplication.newInputsAnalytics.total || selectedApplication.newInputs.length}`} color="primary" />
+                        <Chip label={`Valid: ${selectedApplication.newInputsAnalytics.validInputs || 0}`} color="success" />
+                        <Chip label={`Invalid: ${selectedApplication.newInputsAnalytics.invalidInputs || 0}`} color="error" />
+                      </Box>
+                      {selectedApplication.newInputsAnalytics.byType && (
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>By Type:</Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {Object.entries(selectedApplication.newInputsAnalytics.byType).map(([type, count]: [string, any]) => (
+                              count > 0 && <Chip key={type} label={`${type}: ${count}`} size="small" />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Type</TableCell>
+                          <TableCell>Question</TableCell>
+                          <TableCell>Value</TableCell>
+                          <TableCell>Element</TableCell>
+                          <TableCell>Name</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {selectedApplication.newInputs.map((input: any, index: number) => (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <Chip label={input.type || 'N/A'} size="small" />
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {input.question || 'N/A'}
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {input.value || 'N/A'}
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                              {input.element || 'N/A'}
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                              {input.name || 'N/A'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
+
+              {detailTab === 3 && (
                 <Box>
                   <Typography variant="h6" gutterBottom>AI Analysis</Typography>
                   {individualAILoading ? (
@@ -1072,7 +1578,7 @@ export default function Dashboard() {
                 </Box>
               )}
 
-              {detailTab === 3 && (
+              {detailTab === 4 && (
                 <Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h6">Job Application Form</Typography>
@@ -1114,7 +1620,7 @@ export default function Dashboard() {
                 </Box>
               )}
 
-              {detailTab === 4 && (
+              {detailTab === 5 && (
                 <Box>
                   <Typography variant="h6" gutterBottom>Raw JSON Data</Typography>
                   <Paper sx={{ p: 2, backgroundColor: '#f5f5f5', maxHeight: 600, overflow: 'auto' }}>
