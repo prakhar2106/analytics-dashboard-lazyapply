@@ -86,6 +86,13 @@ interface JobSearch {
     country: string
     results: number
     timeFilter: string
+    filtersForBackend?: {
+      jobType?: string
+      experienceLevel?: string
+      workType?: string
+      [key: string]: any
+    }
+    [key: string]: any
   }
   validatedParams: {
     validatedTitles: string[]
@@ -1878,31 +1885,205 @@ export default function JobSearchAnalytics() {
               {detailTab === 2 && (
                 <Box>
                   <Typography variant="h6" gutterBottom>Query Information</Typography>
-                  <List>
-                    <ListItem>
-                      <ListItemText 
-                        primary="Final Query" 
-                        secondary={
-                          <Typography 
-                            component="span" 
-                            sx={{ 
-                              fontFamily: 'monospace',
-                              fontSize: '0.875rem',
+                  
+                  {/* Query Construction Flow */}
+                  <Paper sx={{ p: 3, mb: 3, backgroundColor: '#fff3cd', border: '1px solid #ffc107' }}>
+                    <Typography variant="h6" gutterBottom>
+                      How the Query is Built
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      The query is constructed through a multi-step process:
+                    </Typography>
+                    <Box sx={{ pl: 2 }}>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>1. Original Input:</strong> User provides titles and locations (e.g., "data anayst")
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>2. AI Validation:</strong> AI prompts validate and expand titles/locations
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>3. Query Construction:</strong> Final query is built from validated parameters + site filters + backend filters
+                      </Typography>
+                    </Box>
+                  </Paper>
+
+                  {/* Search Parameters */}
+                  {selectedSearch.searchParams && (
+                    <>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>1. Original Search Parameters</Typography>
+                      <Paper sx={{ p: 2, backgroundColor: '#f5f5f5', maxHeight: 400, overflow: 'auto', mb: 3 }}>
+                        <Typography
+                          component="pre"
+                          sx={{
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            fontSize: '0.875rem',
+                            fontFamily: 'monospace',
+                            margin: 0,
+                          }}
+                        >
+                          {JSON.stringify(selectedSearch.searchParams, null, 2)}
+                        </Typography>
+                      </Paper>
+                    </>
+                  )}
+
+                  {/* Validated Parameters */}
+                  {selectedSearch.validatedParams && (
+                    <>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>2. Validated Parameters (After AI Processing)</Typography>
+                      <Paper sx={{ p: 2, backgroundColor: '#d4edda', maxHeight: 300, overflow: 'auto', mb: 3 }}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            <strong>Original → Validated Titles:</strong>
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                            {selectedSearch.searchParams?.originalTitles?.map((title: string, idx: number) => (
+                              <Chip key={idx} label={title} size="small" color="default" />
+                            ))}
+                            <Typography variant="body2" sx={{ alignSelf: 'center', mx: 1 }}>→</Typography>
+                            {selectedSearch.validatedParams?.validatedTitles?.map((title: string, idx: number) => (
+                              <Chip key={idx} label={title} size="small" color="primary" />
+                            ))}
+                          </Box>
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle2" gutterBottom>
+                            <strong>Original → Validated Locations:</strong>
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {selectedSearch.searchParams?.originalLocations?.map((loc: string, idx: number) => (
+                              <Chip key={idx} label={loc} size="small" color="default" />
+                            ))}
+                            <Typography variant="body2" sx={{ alignSelf: 'center', mx: 1 }}>→</Typography>
+                            {selectedSearch.validatedParams?.validatedLocations?.map((loc: string, idx: number) => (
+                              <Chip key={idx} label={loc} size="small" color="secondary" />
+                            ))}
+                          </Box>
+                        </Box>
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            <strong>Full Validated Params Object:</strong>
+                          </Typography>
+                          <Typography
+                            component="pre"
+                            sx={{
+                              whiteSpace: 'pre-wrap',
                               wordBreak: 'break-word',
-                              whiteSpace: 'pre-wrap'
+                              fontSize: '0.75rem',
+                              fontFamily: 'monospace',
+                              margin: 0,
+                              mt: 1,
                             }}
                           >
-                            {selectedSearch.query?.finalQuery || 'N/A'}
+                            {JSON.stringify(selectedSearch.validatedParams, null, 2)}
                           </Typography>
-                        }
-                      />
-                    </ListItem>
-                  </List>
+                        </Box>
+                      </Paper>
+                    </>
+                  )}
+
+                  {/* Backend Filters */}
+                  {selectedSearch.searchParams?.filtersForBackend && (
+                    <>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>3. Backend Filters</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        These filters are applied to the query to refine job search results (e.g., job type, experience level, work type).
+                      </Typography>
+                      <Paper sx={{ p: 2, backgroundColor: '#fff3cd', mb: 3 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                          {selectedSearch.searchParams.filtersForBackend.jobType && (
+                            <Chip 
+                              label={`Job Type: ${selectedSearch.searchParams.filtersForBackend.jobType}`} 
+                              size="small" 
+                              color="warning" 
+                            />
+                          )}
+                          {selectedSearch.searchParams.filtersForBackend.experienceLevel && (
+                            <Chip 
+                              label={`Experience: ${selectedSearch.searchParams.filtersForBackend.experienceLevel}`} 
+                              size="small" 
+                              color="warning" 
+                            />
+                          )}
+                          {selectedSearch.searchParams.filtersForBackend.workType && (
+                            <Chip 
+                              label={`Work Type: ${selectedSearch.searchParams.filtersForBackend.workType}`} 
+                              size="small" 
+                              color="warning" 
+                            />
+                          )}
+                          {!selectedSearch.searchParams.filtersForBackend.jobType && 
+                           !selectedSearch.searchParams.filtersForBackend.experienceLevel && 
+                           !selectedSearch.searchParams.filtersForBackend.workType && (
+                            <Typography variant="body2" color="text.secondary">
+                              No backend filters applied
+                            </Typography>
+                          )}
+                        </Box>
+                        <Typography
+                          component="pre"
+                          sx={{
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            fontSize: '0.75rem',
+                            fontFamily: 'monospace',
+                            margin: 0,
+                            mt: 1,
+                          }}
+                        >
+                          {JSON.stringify(selectedSearch.searchParams.filtersForBackend, null, 2)}
+                        </Typography>
+                      </Paper>
+                    </>
+                  )}
+
+                  {/* Query Details - Site Filters */}
+                  {selectedSearch.query?.queryDetails?.siteFilters && (
+                    <>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>4. Site Filters</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        These are the job board sites that are included in the search query.
+                      </Typography>
+                      <Paper sx={{ p: 2, backgroundColor: '#f0f0f0', mb: 3 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {selectedSearch.query.queryDetails.siteFilters.map((site: string, idx: number) => (
+                            <Chip key={idx} label={site} size="small" color="default" />
+                          ))}
+                        </Box>
+                      </Paper>
+                    </>
+                  )}
+
+                  {/* Final Query String */}
+                  {selectedSearch.query?.finalQuery && (
+                    <>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>5. Final Query String (Used for Search)</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        This query combines: <strong>Validated Titles</strong> + <strong>Validated Locations</strong> + <strong>Site Filters</strong> + <strong>Backend Filters</strong>
+                      </Typography>
+                      <Paper sx={{ p: 2, backgroundColor: '#e3f2fd', mb: 3 }}>
+                        <Typography
+                          component="pre"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: '0.875rem',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'pre-wrap',
+                            margin: 0,
+                          }}
+                        >
+                          {selectedSearch.query.finalQuery}
+                        </Typography>
+                      </Paper>
+                    </>
+                  )}
                   
+                  {/* Query Details */}
                   {selectedSearch.query?.queryDetails && (
                     <>
-                      <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Query Details</Typography>
-                      <Paper sx={{ p: 2, backgroundColor: '#f5f5f5', maxHeight: 400, overflow: 'auto' }}>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Query Details</Typography>
+                      <Paper sx={{ p: 2, backgroundColor: '#f5f5f5', maxHeight: 400, overflow: 'auto', mb: 3 }}>
                         <Typography
                           component="pre"
                           sx={{
@@ -1919,9 +2100,10 @@ export default function JobSearchAnalytics() {
                     </>
                   )}
                   
+                  {/* Full Query Object */}
                   {selectedSearch.query && Object.keys(selectedSearch.query).length > 0 && (
                     <>
-                      <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>Full Query Object</Typography>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Full Query Object</Typography>
                       <Paper sx={{ p: 2, backgroundColor: '#f5f5f5', maxHeight: 400, overflow: 'auto' }}>
                         <Typography
                           component="pre"
@@ -2007,6 +2189,52 @@ export default function JobSearchAnalytics() {
                   <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
                     AI Prompts Used for Validation
                   </Typography>
+
+                  {/* Original Query Used Section */}
+                  {selectedSearch.query?.finalQuery && (
+                    <Paper sx={{ p: 3, mb: 3, backgroundColor: '#e3f2fd' }}>
+                      <Typography variant="h6" gutterBottom>
+                        Original Query Used for This Search
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        This is the actual search query that was used when this job search was performed.
+                      </Typography>
+                      <Paper sx={{ p: 2, backgroundColor: '#fff' }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: '0.875rem',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'pre-wrap',
+                          }}
+                        >
+                          {selectedSearch.query.finalQuery}
+                        </Typography>
+                      </Paper>
+                      {selectedSearch.query?.queryDetails && (
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Query Details
+                          </Typography>
+                          <Paper sx={{ p: 2, backgroundColor: '#fff', maxHeight: 200, overflow: 'auto' }}>
+                            <Typography
+                              component="pre"
+                              sx={{
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                fontSize: '0.75rem',
+                                fontFamily: 'monospace',
+                                margin: 0,
+                              }}
+                            >
+                              {JSON.stringify(selectedSearch.query.queryDetails, null, 2)}
+                            </Typography>
+                          </Paper>
+                        </Box>
+                      )}
+                    </Paper>
+                  )}
 
                   {/* Test Prompts Section */}
                   <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f9f9f9' }}>
@@ -2246,7 +2474,10 @@ export default function JobSearchAnalytics() {
                         {testJobSearchResults.query && (
                           <Paper sx={{ p: 2, mt: 2, backgroundColor: '#f5f5f5' }}>
                             <Typography variant="subtitle2" gutterBottom>
-                              Search Query Used
+                              Test Search Query (Generated with Current Prompts)
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.75rem' }}>
+                              This is the query that would be generated if you run the search with the current active prompts. Compare this with the original query above.
                             </Typography>
                             <Typography
                               variant="body2"
@@ -2254,6 +2485,7 @@ export default function JobSearchAnalytics() {
                                 fontFamily: 'monospace',
                                 fontSize: '0.875rem',
                                 wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
                               }}
                             >
                               {testJobSearchResults.query.searchQuery}
